@@ -1,0 +1,428 @@
+:root {
+    --accent: #36D6B5;
+    --accent-deep: #1FA388;
+    --ink: #0E1B1A;
+    --ink-soft: #4A5C5A;
+    --paper: #F6F4EE;
+    --card: #FFFFFF;
+    --line: #E2DDD2;
+    --warn: #B0413E;
+  }
+
+- { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+background: var(–paper);
+color: var(–ink);
+font-family: ‘Inter’, sans-serif;
+-webkit-font-smoothing: antialiased;
+min-height: 100vh;
+}
+
+body {
+background-image:
+radial-gradient(circle at 15% 10%, rgba(54, 214, 181, 0.08), transparent 40%),
+radial-gradient(circle at 85% 85%, rgba(31, 163, 136, 0.06), transparent 45%);
+}
+
+.wrap {
+max-width: 1320px;
+margin: 0 auto;
+padding: 56px 32px 80px;
+}
+
+header {
+display: flex;
+justify-content: space-between;
+align-items: flex-end;
+border-bottom: 1px solid var(–line);
+padding-bottom: 28px;
+margin-bottom: 40px;
+flex-wrap: wrap;
+gap: 24px;
+}
+
+.brand {
+display: flex;
+align-items: center;
+gap: 12px;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 12px;
+text-transform: uppercase;
+letter-spacing: 0.18em;
+color: var(–ink-soft);
+}
+
+.brand::before {
+content: “”;
+width: 10px;
+height: 10px;
+background: var(–accent);
+border-radius: 50%;
+box-shadow: 0 0 0 4px rgba(54, 214, 181, 0.2);
+animation: pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+0%, 100% { box-shadow: 0 0 0 4px rgba(54, 214, 181, 0.2); }
+50% { box-shadow: 0 0 0 8px rgba(54, 214, 181, 0.05); }
+}
+
+h1 {
+font-family: ‘Fraunces’, serif;
+font-weight: 500;
+font-size: clamp(48px, 7vw, 88px);
+line-height: 0.95;
+letter-spacing: -0.03em;
+margin-top: 24px;
+}
+
+h1 em {
+font-style: italic;
+color: var(–accent-deep);
+font-weight: 400;
+}
+
+.subtitle {
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 13px;
+color: var(–ink-soft);
+text-align: right;
+}
+
+.subtitle span {
+color: var(–ink);
+font-weight: 500;
+}
+
+.toolbar {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 32px;
+gap: 16px;
+flex-wrap: wrap;
+}
+
+.filters {
+display: flex;
+gap: 8px;
+flex-wrap: wrap;
+}
+
+.chip {
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 11px;
+text-transform: uppercase;
+letter-spacing: 0.1em;
+padding: 8px 14px;
+border: 1px solid var(–line);
+border-radius: 100px;
+background: var(–card);
+color: var(–ink-soft);
+cursor: pointer;
+transition: all 0.2s;
+white-space: nowrap;
+}
+
+.chip:hover {
+border-color: var(–accent);
+color: var(–ink);
+}
+
+.chip.active {
+background: var(–ink);
+color: var(–paper);
+border-color: var(–ink);
+}
+
+.chip.active strong { color: var(–accent); font-weight: 500; }
+
+.search-box { position: relative; }
+
+.search-box input {
+background: var(–card);
+border: 1px solid var(–line);
+border-radius: 100px;
+padding: 10px 16px 10px 36px;
+font-family: inherit;
+font-size: 13px;
+width: 240px;
+color: var(–ink);
+outline: none;
+transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-box input:focus {
+border-color: var(–accent);
+box-shadow: 0 0 0 4px rgba(54, 214, 181, 0.15);
+}
+
+.search-box::before {
+content: “⌕”;
+position: absolute;
+left: 14px;
+top: 50%;
+transform: translateY(-50%);
+color: var(–ink-soft);
+font-size: 16px;
+}
+
+#rows {
+display: grid;
+gap: 24px;
+grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.card {
+position: relative;
+background: var(–card);
+border: 1px solid var(–line);
+border-radius: 16px;
+overflow: hidden;
+display: flex;
+flex-direction: column;
+transition: transform 0.3s ease, box-shadow 0.3s ease;
+opacity: 0;
+animation: rise 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes rise {
+from { opacity: 0; transform: translateY(14px); }
+to { opacity: 1; transform: translateY(0); }
+}
+
+.card:hover {
+transform: translateY(-4px);
+box-shadow: 0 24px 48px -24px rgba(14, 27, 26, 0.3);
+}
+
+.card:hover .card-image img { transform: scale(1.06); }
+
+.card-image {
+position: relative;
+aspect-ratio: 4 / 3;
+overflow: hidden;
+background: linear-gradient(135deg, #F0EDE4, #E2DDD2);
+}
+
+.card-image img {
+width: 100%;
+height: 100%;
+object-fit: cover;
+transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.card-image .placeholder {
+position: absolute;
+inset: 0;
+display: flex;
+align-items: center;
+justify-content: center;
+font-family: ‘Fraunces’, serif;
+font-style: italic;
+font-size: 64px;
+color: var(–ink-soft);
+opacity: 0.35;
+}
+
+.badge {
+position: absolute;
+top: 14px;
+left: 14px;
+padding: 5px 10px;
+border-radius: 100px;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 10px;
+text-transform: uppercase;
+letter-spacing: 0.1em;
+backdrop-filter: blur(8px);
+-webkit-backdrop-filter: blur(8px);
+}
+
+.badge.in-stock {
+background: rgba(54, 214, 181, 0.92);
+color: #053D31;
+}
+
+.badge.out-stock {
+background: rgba(176, 65, 62, 0.92);
+color: #fff;
+}
+
+.category-tag {
+position: absolute;
+top: 14px;
+right: 14px;
+padding: 5px 10px;
+border-radius: 100px;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 10px;
+text-transform: uppercase;
+letter-spacing: 0.1em;
+background: rgba(255, 255, 255, 0.92);
+color: var(–ink);
+backdrop-filter: blur(8px);
+-webkit-backdrop-filter: blur(8px);
+}
+
+.card-body {
+padding: 22px 22px 24px;
+display: flex;
+flex-direction: column;
+flex: 1;
+}
+
+.sku {
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 10px;
+text-transform: uppercase;
+letter-spacing: 0.14em;
+color: var(–ink-soft);
+margin-bottom: 8px;
+}
+
+.name {
+font-family: ‘Fraunces’, serif;
+font-size: 24px;
+font-weight: 500;
+line-height: 1.1;
+letter-spacing: -0.01em;
+margin-bottom: 12px;
+}
+
+.description {
+font-size: 14px;
+line-height: 1.55;
+color: var(–ink-soft);
+margin-bottom: 20px;
+flex: 1;
+}
+
+.footer-row {
+display: flex;
+justify-content: space-between;
+align-items: center;
+padding-top: 18px;
+border-top: 1px dashed var(–line);
+gap: 12px;
+}
+
+.price {
+font-family: ‘Fraunces’, serif;
+font-size: 28px;
+font-weight: 500;
+letter-spacing: -0.01em;
+}
+
+.price .currency {
+font-size: 16px;
+color: var(–ink-soft);
+margin-right: 2px;
+vertical-align: top;
+position: relative;
+top: 4px;
+}
+
+.buy-btn {
+background: var(–ink);
+color: var(–paper);
+border: none;
+padding: 10px 18px;
+border-radius: 100px;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 11px;
+text-transform: uppercase;
+letter-spacing: 0.1em;
+cursor: pointer;
+text-decoration: none;
+display: inline-flex;
+align-items: center;
+gap: 6px;
+transition: background 0.2s, transform 0.2s;
+}
+
+.buy-btn:hover {
+background: var(–accent-deep);
+transform: translateX(2px);
+}
+
+.buy-btn::after {
+content: “→”;
+transition: transform 0.2s;
+}
+
+.buy-btn:hover::after { transform: translateX(2px); }
+
+.buy-btn.disabled {
+background: transparent;
+color: var(–ink-soft);
+border: 1px solid var(–line);
+pointer-events: none;
+}
+
+.buy-btn.disabled::after { content: “”; }
+
+.state {
+text-align: center;
+padding: 80px 20px;
+color: var(–ink-soft);
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 13px;
+letter-spacing: 0.05em;
+grid-column: 1 / -1;
+}
+
+.skeleton {
+display: grid;
+gap: 24px;
+grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+grid-column: 1 / -1;
+}
+
+.skeleton-card {
+height: 420px;
+background: linear-gradient(110deg, #ffffff 30%, #f0ede4 50%, #ffffff 70%);
+background-size: 200% 100%;
+border-radius: 16px;
+border: 1px solid var(–line);
+animation: shimmer 1.6s linear infinite;
+}
+
+@keyframes shimmer {
+0% { background-position: 200% 0; }
+100% { background-position: -200% 0; }
+}
+
+.error {
+grid-column: 1 / -1;
+color: var(–warn);
+background: #FEEFEE;
+border: 1px solid #F5C6C4;
+border-radius: 12px;
+padding: 24px;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 13px;
+}
+
+footer {
+margin-top: 80px;
+padding-top: 24px;
+border-top: 1px solid var(–line);
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 11px;
+text-transform: uppercase;
+letter-spacing: 0.12em;
+color: var(–ink-soft);
+display: flex;
+justify-content: space-between;
+flex-wrap: wrap;
+gap: 12px;
+}
+
+@media (max-width: 600px) {
+.wrap { padding: 32px 20px 60px; }
+.subtitle { text-align: left; }
+.search-box, .search-box input { width: 100%; }
+.toolbar { flex-direction: column; align-items: stretch; }
+}
