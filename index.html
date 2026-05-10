@@ -20,6 +20,67 @@
 <!-- End SEO Meta Tags -->
 <meta name="sheet-data-url" content="https://paymegpt.com/api/public/landing-pages/3903/sheet-data">
 
+<style data-gate>body{visibility:hidden;}</style>
+<script data-gate>
+(function(){
+  var slug='GcMpkcUL';
+  var apiBase='https://paymegpt.com';
+  var PW_TOKEN_KEY='lp_pw_'+slug;
+  var pwPassed=false;
+  var storedToken=localStorage.getItem(PW_TOKEN_KEY);
+  if(storedToken){
+    try{
+      var decoded=atob(storedToken);
+      var parts=decoded.split(':');
+      if(parts.length>=2){
+        var ts=parseInt(parts[1]);
+        if(Date.now()-ts<24*60*60*1000){pwPassed=true;}
+      }
+    }catch(e){}
+  }
+  if(pwPassed){document.addEventListener('DOMContentLoaded',function(){document.body.style.visibility='visible';});return;}
+  document.addEventListener('DOMContentLoaded',function(){
+    var gateHtml='<div id="password-gate" style="position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#f5f7fa 0%,#c3cfe2 100%);display:flex;align-items:center;justify-content:center;z-index:999999;font-family:system-ui,-apple-system,sans-serif;padding:16px;">'+
+      '<div style="background:white;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.15);width:100%;max-width:420px;padding:32px;text-align:center;">'+
+      '<div style="width:64px;height:64px;border-radius:50%;background:#2563eb20;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg></div>'+
+      '<h2 style="margin:0 0 12px;font-size:24px;font-weight:700;color:#111827;">Enter Password</h2>'+
+      '<p style="margin:0 0 24px;color:#6b7280;font-size:16px;">This page is password protected.</p>'+
+      '<form id="pw-form">'+
+      '<input type="password" id="pw-input" placeholder="Enter password" required style="width:100%;box-sizing:border-box;height:48px;padding:0 16px;font-size:16px;border:1px solid #d1d5db;border-radius:8px;outline:none;margin-bottom:12px;" />'+
+      '<div id="pw-error" style="display:none;color:#ef4444;font-size:14px;margin-bottom:12px;"></div>'+
+      '<div id="pw-success" style="display:none;color:#22c55e;font-size:14px;margin-bottom:12px;"></div>'+
+      '<button type="submit" id="pw-btn" style="width:100%;height:48px;font-size:16px;font-weight:600;color:white;border:none;border-radius:8px;cursor:pointer;background:#2563eb;">Submit</button>'+
+      '</form></div></div>';
+    document.body.insertAdjacentHTML('beforeend',gateHtml);
+    document.body.style.visibility='visible';
+    var pwForm=document.getElementById('pw-form');
+    var pwInput=document.getElementById('pw-input');
+    var pwBtn=document.getElementById('pw-btn');
+    var pwError=document.getElementById('pw-error');
+    var pwSuccess=document.getElementById('pw-success');
+    pwForm.addEventListener('submit',function(e){
+      e.preventDefault();
+      var pw=pwInput.value;if(!pw)return;
+      pwBtn.disabled=true;pwBtn.textContent='Verifying...';pwError.style.display='none';pwSuccess.style.display='none';
+      fetch(apiBase+'/api/landing-pages/public/'+slug+'/verify-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})})
+      .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
+      .then(function(res){
+        if(res.data.success&&res.data.accessToken){
+          localStorage.setItem(PW_TOKEN_KEY,res.data.accessToken);
+          pwSuccess.textContent='Access granted!';pwSuccess.style.display='block';
+          setTimeout(function(){document.getElementById('password-gate').remove();},600);
+        }else{
+          pwError.textContent=res.data.error||'Incorrect password. Please try again.';pwError.style.display='block';
+          pwInput.value='';pwInput.focus();
+        }
+      })
+      .catch(function(){pwError.textContent='Incorrect password. Please try again.';pwError.style.display='block';})
+      .finally(function(){pwBtn.disabled=false;pwBtn.textContent='Submit';});
+    });
+    pwInput.focus();
+  });
+})();
+</script>
 <script data-field-replace>
 (function(){
   var params=new URLSearchParams(window.location.search);
