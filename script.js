@@ -1,185 +1,265 @@
-let allData = [];
-  let activeCategory = '*';
-  let activeQuery = '';
+// ===== GLOBAL STATE =====
+        var allContacts = [];
+        var filteredContacts = [];
+        var currentFilter = 'all';
+        var contactedMap = {};
 
-  const escape = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  }[c]));
+        // ===== LOAD CONTACTS FROM GOOGLE SHEET =====
+        function loadContactsFromSheet() {
+            var endpoint = document.querySelector('meta[name="sheet-data-url"]')?.content;
+            if (!endpoint) {
+                console.warn('Sheet data URL not found');
+                return;
+            }
 
-  const get = (row, ...keys) => {
-    const lower = {};
-    Object.keys(row).forEach(k => { lower[k.toLowerCase().replace(/[\s_]/g, '')] = row[k]; });
-    for (const k of keys) {
-      const norm = k.toLowerCase().replace(/[\s_]/g, '');
-      if (lower[norm] != null && String(lower[norm]).trim() !== '') return lower[norm];
-    }
-    return '';
-  };
+            var container = document.getElementById('sheet-data');
+            var loadingSkeleton = document.getElementById('loading-skeleton');
+            var errorDiv = document.getElementById('menu-error');
+            var emptyState = document.getElementById('empty-state');
 
-  const formatPrice = (val) => {
-    if (val === '' || val == null) return '';
-    const num = Number(String(val).replace(/[^0-9.\-]/g, ''));
-    if (isNaN(num)) return String(val);
-    return num.toFixed(2);
-  };
+            loadingSkeleton.classList.remove('hidden');
+            errorDiv.classList.add('hidden');
+            emptyState.classList.add('hidden');
 
-  const isInStock = (val) => {
-    const s = String(val ?? '').trim().toLowerCase();
-    return s === 'yes' || s === 'true' || s === '1' || s === 'in stock' || s === 'available';
-  };
+            fetch(endpoint)
+                .then(function(r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                })
+                .then(function(result) {
+                    if (!result.data || result.data.length === 0) {
+                        loadingSkeleton.classList.add('hidden');
+                        emptyState.classList.remove('hidden');
+                        return;
+                    }
 
-  const renderCard = (row, i) => {
-    const name = get(row, 'name', 'product', 'title', 'item');
-    const description = get(row, 'description', 'desc', 'details');
-    const price = formatPrice(get(row, 'price', 'cost', 'amount'));
-    const imageUrl = get(row, 'image url', 'image', 'imageurl', 'photo', 'img');
-    const category = get(row, 'category', 'type', 'group');
-    const sku = get(row, 'sku', 'id', 'code');
-    const stockRaw = get(row, 'in stock', 'stock', 'available', 'instock');
-    const inStock = stockRaw === '' ? true : isInStock(stockRaw);
-    const checkoutUrl = get(row, 'external checkout url', 'checkout url', 'checkout', 'link', 'url', 'buy url');
-    const buyText = get(row, 'buy now text', 'button text', 'cta') || 'Buy now';
+                    // ===== PROCESS SHEET DATA =====
+                    allContacts = result.data.map(function(row) {
+                        return {
+                            fullName: row['Full Name'] || row['First Name'] + ' ' + row['Last Name'] || 'Unknown',
+                            firstName: row['First Name'] || '',
+                            lastName: row['Last Name'] || '',
+                            email: row['Email'] || '',
+                            phone: row['Phone'] || '',
+                            contactType: row['Contact Type'] || 'Inquiry',
+                            message: row['Message'] || '',
+                            submittedAt: row['Submitted At'] || '',
+                            rowNumber: row._rowNumber || 0
+                        };
+                    });
 
-    const initial = name ? name.charAt(0).toUpperCase() : '·';
-    const safeImg = imageUrl ? escape(imageUrl) : '';
-    const imageHTML = safeImg
-      ? `<img src="${safeImg}" alt="${escape(name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-         <div class="placeholder" style="display:none">${escape(initial)}</div>`
-      : `<div class="placeholder">${escape(initial)}</div>`;
+                    // Load contacted status from localStorage
+                    var savedStatus = localStorage.getItem('contacted-contacts');
+                    if (savedStatus) {
+                        contactedMap = JSON.parse(savedStatus);
+                    }
 
-    const stockBadge = inStock
-      ? `<div class="badge in-stock">● In stock</div>`
-      : `<div class="badge out-stock">○ Sold out</div>`;
+                    // Render contacts and update stats
+                    renderContacts(allContacts);
+                    updateStats();
+                    loadingSkeleton.classList.add('hidden');
+                })
+                .catch(function(err) {
+                    console.error('Sheet data error:', err);
+                    loadingSkeleton.classList.add('hidden');
+                    errorDiv.classList.remove('hidden');
+                });
+        }
 
-    const categoryTag = category ? `<div class="category-tag">${escape(category)}</div>` : '';
-    const skuHTML = sku ? `<div class="sku">${escape(sku)}</div>` : '';
+        // ===== RENDER CONTACT CARDS =====
+        function renderContacts(contacts) {
+            var container = document.getElementById('sheet-data');
+            var emptyState = document.getElementById('empty-state');
 
-    let buyHTML = '';
-    if (inStock) {
-      if (checkoutUrl) {
-        buyHTML = `<a class="buy-btn" href="${escape(checkoutUrl)}" target="_blank" rel="noopener">${escape(buyText)}</a>`;
-      } else {
-        buyHTML = `<button class="buy-btn" type="button">${escape(buyText)}</button>`;
-      }
-    } else {
-      buyHTML = `<span class="buy-btn disabled">Unavailable</span>`;
-    }
+            if (contacts.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
 
-    const priceHTML = price !== ''
-      ? `<div class="price"><span class="currency">$</span>${escape(price)}</div>`
-      : `<div class="price" style="color:var(--ink-soft);font-size:14px;font-style:italic">Price on request</div>`;
+            emptyState.classList.add('hidden');
+            container.innerHTML = contacts.map(function(contact, idx) {
+                var isContacted = contactedMap[contact.rowNumber];
+                var statusClass = isContacted ? 'contacted' : 'pending';
+                var statusBadge = isContacted ? 'badge-contacted' : 'badge-pending';
+                var typeClass = 'type-default';
+                var typeEmoji = '📋';
 
-    const delay = Math.min(i * 50, 700);
+                if (contact.contactType.includes('Concern')) {
+                    typeClass = 'type-concern';
+                    typeEmoji = '⚠️';
+                } else if (contact.contactType.includes('Volunteer')) {
+                    typeClass = 'type-volunteer';
+                    typeEmoji = '🤝';
+                } else if (contact.contactType.includes('Support')) {
+                    typeClass = 'type-support';
+                    typeEmoji = '💪';
+                }
 
-    return `
-      <article class="card" style="animation-delay: ${delay}ms">
-        <div class="card-image">
-          ${imageHTML}
-          ${stockBadge}
-          ${categoryTag}
-        </div>
-        <div class="card-body">
-          ${skuHTML}
-          <h2 class="name">${escape(name) || 'Untitled'}</h2>
-          ${description ? `<p class="description">${escape(description)}</p>` : '<div style="flex:1"></div>'}
-          <div class="footer-row">
-            ${priceHTML}
-            ${buyHTML}
-          </div>
-        </div>
-      </article>
-    `;
-  };
+                return '<div class="contact-card ' + statusClass + ' ' + typeClass + ' bg-white rounded-lg p-4 sm:p-6 shadow-sm" data-row="' + contact.rowNumber + '" style="animation-delay:' + (idx * 0.05) + 's">' +
+                    '<div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">' +
+                    '<div class="flex-1 min-w-0">' +
+                    '<div class="flex items-center gap-2 mb-2">' +
+                    '<input type="checkbox" class="contact-checkbox" data-row="' + contact.rowNumber + '" ' + (isContacted ? 'checked' : '') + '>' +
+                    '<h3 class="text-lg sm:text-xl font-bold text-gray-900 truncate">' + escapeHtml(contact.fullName) + '</h3>' +
+                    '</div>' +
+                    '<div class="space-y-1 text-sm text-gray-600 mb-3">' +
+                    (contact.email ? '<div>📧 <a href="mailto:' + escapeHtml(contact.email) + '" class="text-blue-600 hover:underline break-all">' + escapeHtml(contact.email) + '</a></div>' : '') +
+                    (contact.phone ? '<div>📱 <a href="tel:' + escapeHtml(contact.phone) + '" class="text-blue-600 hover:underline">' + escapeHtml(contact.phone) + '</a></div>' : '') +
+                    (contact.submittedAt ? '<div>📅 Submitted: ' + escapeHtml(contact.submittedAt) + '</div>' : '') +
+                    '</div>' +
+                    '<div class="flex flex-wrap gap-2 mb-3">' +
+                    '<span class="' + statusBadge + ' text-xs sm:text-sm font-semibold px-3 py-1 rounded-full">' +
+                    (isContacted ? '✓ Contacted' : '⏳ Pending') +
+                    '</span>' +
+                    '<span class="bg-gray-100 text-gray-800 text-xs sm:text-sm font-semibold px-3 py-1 rounded-full">' +
+                    typeEmoji + ' ' + escapeHtml(contact.contactType) +
+                    '</span>' +
+                    '</div>' +
+                    (contact.message ? '<p class="text-sm text-gray-700 bg-gray-50 p-3 rounded border-l-2 border-gray-300 italic">"' + escapeHtml(contact.message.substring(0, 120)) + (contact.message.length > 120 ? '..."' : '"') + '</p>' : '') +
+                    '</div>' +
+                    '<div class="flex gap-2 sm:flex-col">' +
+                    '<button class="call-btn flex-1 sm:flex-none bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm font-medium" data-phone="' + escapeHtml(contact.phone) + '">📞 Call</button>' +
+                    '<button class="email-btn flex-1 sm:flex-none bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium" data-email="' + escapeHtml(contact.email) + '">✉️ Email</button>' +
+                    '</div>' +
+                    '</div>' +
+                    '</div>';
+            }).join('');
 
-  const apply = () => {
-    const el = document.getElementById('rows');
-    let filtered = allData;
+            // Attach event listeners
+            attachContactEventListeners();
+        }
 
-    if (activeCategory !== '*') {
-      filtered = filtered.filter(row => {
-        const cat = String(get(row, 'category', 'type', 'group')).toLowerCase();
-        return cat === activeCategory.toLowerCase();
-      });
-    }
+        // ===== ATTACH EVENT LISTENERS TO CONTACT CARDS =====
+        function attachContactEventListeners() {
+            // Checkbox toggle
+            document.querySelectorAll('.contact-checkbox').forEach(function(checkbox) {
+                checkbox.addEventListener('change', function() {
+                    var rowNum = parseInt(this.dataset.row);
+                    if (this.checked) {
+                        contactedMap[rowNum] = true;
+                    } else {
+                        delete contactedMap[rowNum];
+                    }
+                    localStorage.setItem('contacted-contacts', JSON.stringify(contactedMap));
+                    updateStats();
+                    applyFilters();
+                });
+            });
 
-    if (activeQuery) {
-      const q = activeQuery.toLowerCase();
-      filtered = filtered.filter(row =>
-        Object.values(row).some(v => String(v ?? '').toLowerCase().includes(q))
-      );
-    }
+            // Call button
+            document.querySelectorAll('.call-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var phone = this.dataset.phone;
+                    if (phone) {
+                        window.location.href = 'tel:' + phone;
+                    } else {
+                        alert('No phone number available');
+                    }
+                });
+            });
 
-    if (!filtered.length) {
-      el.innerHTML = '<div class="state">No items match those filters.</div>';
-      document.getElementById('count').textContent = '0';
-      return;
-    }
+            // Email button
+            document.querySelectorAll('.email-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var email = this.dataset.email;
+                    if (email) {
+                        window.location.href = 'mailto:' + email;
+                    } else {
+                        alert('No email address available');
+                    }
+                });
+            });
+        }
 
-    el.innerHTML = filtered.map((row, i) => renderCard(row, i)).join('');
-    document.getElementById('count').textContent = filtered.length;
-  };
+        // ===== UPDATE STATISTICS =====
+        function updateStats() {
+            var total = allContacts.length;
+            var contacted = Object.keys(contactedMap).length;
+            var pending = total - contacted;
 
-  const buildCategoryChips = () => {
-    const cats = new Set();
-    allData.forEach(row => {
-      const c = String(get(row, 'category', 'type', 'group')).trim();
-      if (c) cats.add(c);
-    });
-    const filtersEl = document.getElementById('filters');
-    [...cats].sort().forEach(cat => {
-      const btn = document.createElement('button');
-      btn.className = 'chip';
-      btn.dataset.cat = cat;
-      btn.textContent = cat;
-      filtersEl.appendChild(btn);
-    });
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-contacted').textContent = contacted;
+            document.getElementById('stat-pending').textContent = pending;
+            document.getElementById('total-contacts').textContent = total;
+            document.getElementById('contacted-count').textContent = contacted;
+        }
 
-    filtersEl.addEventListener('click', e => {
-      const btn = e.target.closest('.chip');
-      if (!btn) return;
-      filtersEl.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-      btn.classList.add('active');
-      activeCategory = btn.dataset.cat;
-      apply();
-    });
-  };
+        // ===== FILTER AND SEARCH LOGIC =====
+        function applyFilters() {
+            var searchTerm = document.getElementById('search-input').value.toLowerCase();
+            
+            filteredContacts = allContacts.filter(function(contact) {
+                var matchesSearch = contact.fullName.toLowerCase().includes(searchTerm) || 
+                                   contact.email.toLowerCase().includes(searchTerm);
+                
+                if (!matchesSearch) return false;
 
-  document.getElementById('search').addEventListener('input', e => {
-    activeQuery = e.target.value.trim();
-    apply();
-  });
+                if (currentFilter === 'all') return true;
+                if (currentFilter === 'contacted') return contactedMap[contact.rowNumber];
+                if (currentFilter === 'pending') return !contactedMap[contact.rowNumber];
+                
+                return true;
+            });
 
-  const stamp = () => {
-    const now = new Date();
-    document.getElementById('timestamp').textContent =
-      now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    document.getElementById('footer-meta').textContent =
-      now.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
-  };
+            renderContacts(filteredContacts);
+        }
 
-  fetch('https://paymegpt.com/api/google-sheets/11u8KGGrV99Jh6ca9ayaBwxKevOHPz8QxwrcJcW0jqF8/data', {
-    credentials: 'include'
-  })
-    .then(r => {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
-    .then(({ headers, data }) => {
-      const el = document.getElementById('rows');
-      if (!data || !data.length) {
-        el.innerHTML = '<div class="state">No items found.</div>';
-        document.getElementById('count').textContent = '0';
-        stamp();
-        return;
-      }
-      allData = data;
-      buildCategoryChips();
-      apply();
-      stamp();
-    })
-    .catch(err => {
-      document.getElementById('rows').innerHTML =
-        '<div class="error"><strong>Error loading menu:</strong> ' + escape(err.message) + '</div>';
-      document.getElementById('count').textContent = '!';
-      stamp();
-    });
+        // ===== FILTER BUTTON HANDLERS =====
+        document.querySelectorAll('.filter-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(function(b) {
+                    b.classList.remove('active', 'bg-blue-600', 'text-white');
+                    b.classList.add('bg-gray-200', 'text-gray-800');
+                });
+                this.classList.add('active', 'bg-blue-600', 'text-white');
+                this.classList.remove('bg-gray-200', 'text-gray-800');
+                currentFilter = this.dataset.filter;
+                applyFilters();
+            });
+        });
+
+        // ===== SEARCH INPUT HANDLER =====
+        document.getElementById('search-input').addEventListener('input', function() {
+            applyFilters();
+        });
+
+        // ===== EXPORT CONTACTS =====
+        document.getElementById('export-btn').addEventListener('click', function() {
+            var csv = 'Full Name,Email,Phone,Contact Type,Status,Submitted At\n';
+            allContacts.forEach(function(contact) {
+                var status = contactedMap[contact.rowNumber] ? 'Contacted' : 'Pending';
+                csv += '"' + contact.fullName + '","' + contact.email + '","' + contact.phone + '","' + contact.contactType + '","' + status + '","' + contact.submittedAt + '"\n';
+            });
+            
+            var blob = new Blob([csv], { type: 'text/csv' });
+            var url = window.URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'seifert-contacts-' + new Date().toISOString().split('T')[0] + '.csv';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        });
+
+        // ===== REFRESH DATA =====
+        document.getElementById('refresh-btn').addEventListener('click', function() {
+            loadContactsFromSheet();
+        });
+
+        // ===== RETRY BUTTON =====
+        document.getElementById('retry-btn').addEventListener('click', function() {
+            loadContactsFromSheet();
+        });
+
+        // ===== UTILITY: ESCAPE HTML =====
+        function escapeHtml(text) {
+            if (!text) return '';
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ===== INITIALIZE ON PAGE LOAD =====
+        document.addEventListener('DOMContentLoaded', function() {
+            loadContactsFromSheet();
+        });
