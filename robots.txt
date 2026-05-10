@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://baggottsbots.github.io/landing-page-may-10-2026/sitemap.xml
